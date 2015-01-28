@@ -1,0 +1,47 @@
+RADIUS = 128
+SPAWN = {x=0, y=0, z=0}
+
+local function findspawn(player)
+	for try=1000, 0, -1 do
+		local pos = {x = SPAWN.x, y = SPAWN.y, z = SPAWN.z}
+		pos.x = SPAWN.x + math.random(-RADIUS, RADIUS)
+		pos.z = SPAWN.z + math.random(-RADIUS, RADIUS)
+		-- Find ground level (0...15)
+		local ground_y = nil
+		for y=16, 0, -1 do
+			print("pos = "..pos.x..", "..y..", "..pos.z.."")
+			local nn = minetest.get_node({x=pos.x, y=y, z=pos.z}).name
+			if nn ~= "air" and nn~= "ignore" then
+				ground_y = y
+				break
+			end
+		end
+		if ground_y then
+			pos.y = ground_y
+			if minetest.registered_nodes[minetest.get_node(pos).name].walkable == true and
+				minetest.get_node({x=pos.x, y=pos.y+1, z=pos.z}).name == "air" and
+				minetest.get_node({x=pos.x, y=pos.y+2, z=pos.z}).name == "air" then
+				pos.y = pos.y+1
+				return pos
+			end
+		end
+	end
+end
+
+local function spawnarea(player)
+	local pos = findspawn(player)
+	if pos then
+		player:setpos(pos)
+	else
+		player:setpos(SPAWN)
+	end
+end
+
+minetest.register_on_newplayer(function(player)
+	spawnarea(player)
+end)
+
+minetest.register_on_respawnplayer(function(player)
+	spawnarea(player)
+	return true
+end)
