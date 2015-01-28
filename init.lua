@@ -1,4 +1,4 @@
-RADIUS = 128
+RADIUS = 1280
 SPAWN = {x=0, y=0, z=0}
 
 local function findspawn(player)
@@ -6,24 +6,26 @@ local function findspawn(player)
 		local pos = {x = SPAWN.x, y = SPAWN.y, z = SPAWN.z}
 		pos.x = SPAWN.x + math.random(-RADIUS, RADIUS)
 		pos.z = SPAWN.z + math.random(-RADIUS, RADIUS)
-		-- Find ground level (0...15)
-		local ground_y = nil
-		for y=16, 0, -1 do
-			print("pos = "..pos.x..", "..y..", "..pos.z.."")
-			local nn = minetest.get_node({x=pos.x, y=y, z=pos.z}).name
-			if nn ~= "air" and nn~= "ignore" then
-				ground_y = y
-				break
+		if minetest.forceload_block(pos) then
+			-- Find ground level (0...15)
+			local ground_y = nil
+			for y=16, 0, -1 do
+				local nn = minetest.get_node({x=pos.x, y=y, z=pos.z}).name
+				if nn ~= "air" and nn~= "ignore" then
+					ground_y = y
+					break
+				end
 			end
-		end
-		if ground_y then
-			pos.y = ground_y
-			if minetest.registered_nodes[minetest.get_node(pos).name].walkable == true and
-				minetest.get_node({x=pos.x, y=pos.y+1, z=pos.z}).name == "air" and
-				minetest.get_node({x=pos.x, y=pos.y+2, z=pos.z}).name == "air" then
-				pos.y = pos.y+1
-				return pos
+			if ground_y then
+				pos.y = ground_y
+				if minetest.registered_nodes[minetest.get_node(pos).name].walkable == true and
+					minetest.get_node({x=pos.x, y=pos.y+1, z=pos.z}).name == "air" and
+					minetest.get_node({x=pos.x, y=pos.y+2, z=pos.z}).name == "air" then
+					local pos_spawn = {x=pos.x, y=pos.y+1, z=pos.z}
+					return pos_spawn
+				end
 			end
+			minetest.forceload_free_block(pos)
 		end
 	end
 end
