@@ -1,4 +1,4 @@
-RADIUS = 1280
+RADIUS = 128
 SPAWN = {x=0, y=0, z=0}
 
 local function findspawn(player)
