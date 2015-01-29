@@ -2,7 +2,7 @@ RADIUS = 1280
 SPAWN = {x=0, y=0, z=0}
 
 local function findspawn(player)
-	for try=1000, 0, -1 do
+	for try=100000, 0, -1 do
 		local pos = {x = SPAWN.x, y = SPAWN.y, z = SPAWN.z}
 		pos.x = SPAWN.x + math.random(-RADIUS, RADIUS)
 		pos.z = SPAWN.z + math.random(-RADIUS, RADIUS)
