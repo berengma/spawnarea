@@ -1,17 +1,23 @@
-RADIUS = 128
+
+
+RADIUS = 512
 SPAWN = {x=0, y=0, z=0}
 
-local function findspawn(player)
+
+local function findspawn()
+   -- high = math.random(1,14)
 	for try=100000, 0, -1 do
-		local pos = {x = SPAWN.x, y = SPAWN.y, z = SPAWN.z}
+        high = math.random(1,14)
+		local pos = {x = SPAWN.x, y = high, z = SPAWN.z}
 		pos.x = SPAWN.x + math.random(-RADIUS, RADIUS)
 		pos.z = SPAWN.z + math.random(-RADIUS, RADIUS)
-		if minetest.forceload_block(pos) then
+        local free = pos
+		if core.forceload_block(free,true) then
 			-- Find ground level (0...15)
 			local ground_y = nil
-			for y=16, 0, -1 do
-				local nn = minetest.get_node({x=pos.x, y=y, z=pos.z}).name
-				if nn ~= "air" and nn~= "ignore" then
+			for y=high*16, (high-1)*16, -1 do
+				local nn = minetest.get_node({x=pos.x, y=y, z=pos.z})
+				if nn and nn.name ~= "air" and nn.name ~= "ignore" then
 					ground_y = y
 					break
 				end
@@ -22,16 +28,18 @@ local function findspawn(player)
 					minetest.get_node({x=pos.x, y=pos.y+1, z=pos.z}).name == "air" and
 					minetest.get_node({x=pos.x, y=pos.y+2, z=pos.z}).name == "air" then
 					local pos_spawn = {x=pos.x, y=pos.y+1, z=pos.z}
-					return pos_spawn
+                    return pos_spawn
 				end
 			end
-			minetest.forceload_free_block(pos)
+			core.forceload_free_block(free,true)
 		end
 	end
 end
 
+
+
 local function spawnarea(player)
-	local pos = findspawn(player)
+	local pos = findspawn()
 	if pos then
 		player:setpos(pos)
 	else
@@ -47,3 +55,16 @@ minetest.register_on_respawnplayer(function(player)
 	spawnarea(player)
 	return true
 end)
+
+
+
+
+minetest.register_chatcommand("spawntable", {
+	params = "",
+	description = "calc spawnpoints",
+	privs = {server = true},
+	func = function(name, param)
+		minetest.chat_send_player(name, dump(findspawn()))
+		return true
+	end
+})
