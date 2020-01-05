@@ -2,7 +2,7 @@ local spawn_rnd = {}
 
 
 local storage = minetest.get_mod_storage()
-local intervall = 1       -- time in seconds between each search
+local intervall = 1      -- time in seconds between each search
 local idx = 0
 local abr = 16            -- check area around player, radius = abr
 local dist_between = 50   -- distance between two spawnpoints in 2D
@@ -84,7 +84,7 @@ minetest.register_globalstep(function(dtime)
                             
     if idx > intervall then
         local plyrs = minetest.get_connected_players()
-        if not plyrs then return end
+        if #plyrs  < 1 then return end
         local plyr = plyrs[math.random(#plyrs)]
         if not plyr then return end
         local pos = plyr:get_pos()
@@ -99,16 +99,18 @@ end)
 
 -- after death chose random spawm point
 minetest.register_on_respawnplayer(function(player)
+    
     if not player then return end
-	player:set_pos(minetest.string_to_pos(spawn_rnd[math.random(#spawn_rnd)]))
+    minetest.after(0.5, function(player) player:set_pos(minetest.string_to_pos(spawn_rnd[math.random(#spawn_rnd)])) end, player)
     return true
 end)
 
 -- new players get random spawnpoints
 minetest.register_on_newplayer(function(player)
+    
     if not player then return end
-    player:set_pos(minetest.string_to_pos(spawn_rnd[math.random(#spawn_rnd)]))
-    return true
+    minetest.after(1, function(player) player:set_pos(minetest.string_to_pos(spawn_rnd[math.random(#spawn_rnd)])) end, player)
+    return false
 end)
 
   
