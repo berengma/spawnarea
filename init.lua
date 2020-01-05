@@ -1,70 +1,128 @@
+local spawn_rnd = {}
 
 
-RADIUS = 512
-SPAWN = {x=0, y=0, z=0}
+local storage = minetest.get_mod_storage()
+local intervall = 1       -- time in seconds between each search
+local idx = 0
+local abr = 16            -- check area around player, radius = abr
+local dist_between = 50   -- distance between two spawnpoints in 2D
+local max_sp = 200        -- max possible spawnpoints
+local run = true
 
 
-local function findspawn()
-   -- high = math.random(1,14)
-	for try=100000, 0, -1 do
-        high = math.random(1,14)
-		local pos = {x = SPAWN.x, y = high, z = SPAWN.z}
-		pos.x = SPAWN.x + math.random(-RADIUS, RADIUS)
-		pos.z = SPAWN.z + math.random(-RADIUS, RADIUS)
-        local free = pos
-		if core.forceload_block(free,true) then
-			-- Find ground level (0...15)
-			local ground_y = nil
-			for y=high*16, (high-1)*16, -1 do
-				local nn = minetest.get_node({x=pos.x, y=y, z=pos.z})
-				if nn and nn.name ~= "air" and nn.name ~= "ignore" then
-					ground_y = y
-					break
-				end
-			end
-			if ground_y then
-				pos.y = ground_y
-				if minetest.registered_nodes[minetest.get_node(pos).name].walkable == true and
-					minetest.get_node({x=pos.x, y=pos.y+1, z=pos.z}).name == "air" and
-					minetest.get_node({x=pos.x, y=pos.y+2, z=pos.z}).name == "air" then
-					local pos_spawn = {x=pos.x, y=pos.y+1, z=pos.z}
-                    return pos_spawn
-				end
-			end
-			core.forceload_free_block(free,true)
-		end
-	end
+-- load spawnpoints
+local function openlist()
+
+    local iter = 1
+	local pos = storage:get(iter)
+    while pos do
+        spawn_rnd[iter] = pos
+        iter = iter +1
+        pos = storage:get(iter)
+    end
+    if iter > max_sp then run = false end
+	
+end
+
+
+-- save spawnpoints
+local function savelist()
+    --minetest.chat_send_all(dump(spawn_rnd))
+    for i = 1,#spawn_rnd,1 do
+        storage:set_string(i, spawn_rnd[i])
+    end
+end 
+
+
+-- function to check min 2D distance between spawn points
+local function check_distance(pos,radius)
+    
+    if #spawn_rnd < 1 then return true end
+    for i = 1,#spawn_rnd ,1 do
+        local spr = minetest.string_to_pos(spawn_rnd[i])
+        local pos2 = {x=spr.x, y=pos.y, z=spr.z}
+        if vector.distance(pos,pos2) < radius then return false end
+    end
+    return true
+end
+
+
+-- find a spawn point near random player
+local function get_spoint(pos)
+    local pos1 = {x=pos.x - abr, y=pos.y - abr, z=pos.z - abr}
+    local pos2 = {x=pos.x + abr, y=pos.y + abr, z=pos.z + abr}
+    local points = minetest.find_nodes_in_area_under_air(pos1, pos2, {"group:sand","group:stone","group:soil"})
+    if #points < 1 then return end
+    
+        local i = math.random(#points)
+        local a = {x=points[i].x, y=points[i].y+1, z=points[i].z}
+        local b = {x=a.x, y=a.y+15, z=a.z}
+        local aircheck = minetest.find_nodes_in_area(a,b,{"air"})
+        
+        if #aircheck > 13 then
+            local possible = points[i]
+            if check_distance(possible,dist_between) then
+                possible.y = possible.y + 2
+                spawn_rnd[#spawn_rnd+1] = minetest.pos_to_string(possible)
+                storage:set_string(#spawn_rnd, spawn_rnd[#spawn_rnd])
+                if #spawn_rnd > max_sp then run = false end
+            end
+            --minetest.chat_send_all(dump(#spawn_rnd))
+        end
+    
 end
 
 
 
-local function spawnarea(player)
-	local pos = findspawn()
-	if pos then
-		player:setpos(pos)
-	else
-		player:setpos(SPAWN)
-	end
-end
+--- start
 
-minetest.register_on_newplayer(function(player)
-	spawnarea(player)
+openlist()
+
+minetest.register_globalstep(function(dtime)
+    if not run then return end
+    idx = idx + dtime
+                            
+    if idx > intervall then
+        local plyrs = minetest.get_connected_players()
+        local plyr = plyrs[math.random(#plyrs)]
+        if not plyr then return end
+        local pos = plyr:get_pos()
+        if pos.y >0 and pos.y < 250 then
+            get_spoint(pos)
+        end
+        
+        idx = 0
+        
+    end
 end)
 
+-- after death chose random spawm point
 minetest.register_on_respawnplayer(function(player)
-	spawnarea(player)
-	return true
+    if not player then return end
+	player:set_pos(minetest.string_to_pos(spawn_rnd[math.random(#spawn_rnd)]))
+    return true
 end)
 
+-- new players get random spawnpoints
+minetest.register_on_newplayer(function(player)
+    if not player then return end
+    player:set_pos(minetest.string_to_pos(spawn_rnd[math.random(#spawn_rnd)]))
+    return true
+end)
 
-
-
-minetest.register_chatcommand("spawntable", {
+  
+-- Add Chatcommand to see amount of spawnpoints
+minetest.register_chatcommand("flee", {
 	params = "",
-	description = "calc spawnpoints",
+	description = "flee",
 	privs = {server = true},
 	func = function(name, param)
-		minetest.chat_send_player(name, dump(findspawn()))
+		local player = minetest.get_player_by_name(name)
+		if not player then return false end
+		local pos = player:set_pos(minetest.string_to_pos(spawn_rnd[math.random(#spawn_rnd)]))
+        minetest.chat_send_player(name,"Total Spawnpoints = "..dump(#spawn_rnd))
+		
 		return true
 	end
 })
+  
