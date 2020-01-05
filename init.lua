@@ -84,6 +84,7 @@ minetest.register_globalstep(function(dtime)
                             
     if idx > intervall then
         local plyrs = minetest.get_connected_players()
+        if not plyrs then return end
         local plyr = plyrs[math.random(#plyrs)]
         if not plyr then return end
         local pos = plyr:get_pos()
